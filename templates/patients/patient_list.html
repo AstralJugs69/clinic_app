@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="max-w-6xl mx-auto px-4 py-6">
+  <div class="flex items-center justify-between mb-4">
+    <h1 class="text-2xl font-semibold">Patients</h1>
+    <a href="{% url 'patients:new' %}"
+       class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
+      + New Patient
+    </a>
+  </div>
+
+  <!-- Search -->
+  <form method="get" class="mb-4">
+    <input
+      type="text"
+      name="q"
+      value="{{ q|default:'' }}"
+      placeholder="Search by name or phone"
+      class="w-full md:w-1/3 border rounded px-3 py-2"
+    />
+  </form>
+
+  <!-- Table -->
+  <div class="overflow-x-auto bg-white shadow rounded">
+    <table class="min-w-full text-sm">
+      <thead class="bg-gray-100">
+        <tr>
+          <th class="text-left px-4 py-2">Name</th>
+          <th class="text-left px-4 py-2">Phone</th>
+          <th class="text-left px-4 py-2">Sex</th>
+          <th class="text-left px-4 py-2">MRN</th>
+          <th class="px-4 py-2"></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for patient in patients %}
+        <tr class="border-t hover:bg-gray-50">
+          <td class="px-4 py-2">{{ patient.full_name }}</td>
+          <td class="px-4 py-2">{{ patient.phone }}</td>
+          <td class="px-4 py-2">{{ patient.get_sex_display }}</td>
+          <td class="px-4 py-2">{{ patient.mrn|default:"—" }}</td>
+          <td class="px-4 py-2 text-right">
+            <a href="{% url 'patients:detail' patient.id %}"
+               class="text-blue-600 hover:underline">
+              View
+            </a>
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="5" class="px-4 py-6 text-center text-gray-500">
+            No patients found.
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% endblock %}
