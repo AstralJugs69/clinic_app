@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="max-w-4xl mx-auto px-4 py-8">
+    <div class="flex items-center justify-between mb-8">
+        <h1 class="text-2xl font-bold text-gray-800">My Profile</h1>
+        <span class="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm font-medium capitalize">
+            {{ profile.get_role_display|default:"Staff" }}
+        </span>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+        <!-- Profile Card -->
+        <div class="md:col-span-1">
+            <div class="bg-white shadow rounded-lg p-6 text-center">
+                <div
+                    class="w-24 h-24 bg-blue-600 rounded-full flex items-center justify-center text-3xl font-bold text-white mx-auto mb-4">
+                    {{ profile.avatar_initials }}
+                </div>
+                <h2 class="text-xl font-semibold text-gray-800">{{ user.get_full_name|default:user.username }}</h2>
+                <p class="text-gray-500 mb-4">{{ profile.department|default:"Clinic Staff" }}</p>
+
+                <div class="border-t pt-4 text-left text-sm space-y-2">
+                    <div class="flex justify-between">
+                        <span class="text-gray-500">Username:</span>
+                        <span class="font-medium">{{ user.username }}</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-500">Joined:</span>
+                        <span class="font-medium">{{ user.date_joined|date:"M Y" }}</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-500">Last Login:</span>
+                        <span class="font-medium">{{ user.last_login|date:"M d, H:i" }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Edit Form -->
+        <div class="md:col-span-2">
+            <div class="bg-white shadow rounded-lg p-6">
+                <h3 class="text-lg font-semibold text-gray-800 mb-6 pb-2 border-b">Edit Personal Information</h3>
+
+                {% if messages %}
+                {% for message in messages %}
+                <div
+                    class="mb-6 p-4 rounded-md {% if message.tags == 'success' %}bg-green-50 text-green-700{% else %}bg-red-50 text-red-700{% endif %}">
+                    {{ message }}
+                </div>
+                {% endfor %}
+                {% endif %}
+
+                <form method="post" class="space-y-6">
+                    {% csrf_token %}
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">First Name</label>
+                            <input type="text" name="first_name" value="{{ user.first_name }}"
+                                class="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Last Name</label>
+                            <input type="text" name="last_name" value="{{ user.last_name }}"
+                                class="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Email Address</label>
+                        <input type="email" name="email" value="{{ user.email }}"
+                            class="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
+                            <input type="tel" name="phone" value="{{ profile.phone }}"
+                                class="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Department</label>
+                            <input type="text" name="department" value="{{ profile.department }}"
+                                class="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+                    </div>
+
+                    <div class="pt-4 flex justify-end">
+                        <button type="submit"
+                            class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition shadow-sm">
+                            Save Changes
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

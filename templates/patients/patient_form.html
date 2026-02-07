@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="max-w-xl mx-auto px-4 py-6 bg-white shadow rounded">
+  <h1 class="text-xl font-semibold mb-4">New Patient</h1>
+
+  <form method="post" class="space-y-4">
+    {% csrf_token %}
+
+    {% for field in form %}
+      <div>
+        <label class="block text-sm font-medium mb-1">
+          {{ field.label }}
+        </label>
+        {{ field }}
+        {% if field.errors %}
+          <p class="text-red-600 text-sm mt-1">{{ field.errors|striptags }}</p>
+        {% endif %}
+      </div>
+    {% endfor %}
+
+    <div class="flex justify-end gap-2">
+      <a href="{% url 'patients:list' %}"
+         class="px-4 py-2 border rounded">
+        Cancel
+      </a>
+      <button type="submit"
+              class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
+        Save Patient
+      </button>
+    </div>
+  </form>
+</div>
+
+{% endblock %}

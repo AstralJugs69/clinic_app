@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="max-w-4xl mx-auto px-4 py-6">
+  <div class="bg-white shadow rounded p-6">
+    <div class="flex items-start justify-between gap-4">
+      <div>
+        <h1 class="text-2xl font-semibold">{{ patient.full_name }}</h1>
+        <p class="text-gray-600 mt-1">Phone: <span class="font-medium">{{ patient.phone }}</span></p>
+        <p class="text-gray-600">Sex: <span class="font-medium">{{ patient.get_sex_display }}</span></p>
+        {% if patient.date_of_birth %}
+          <p class="text-gray-600">DOB: <span class="font-medium">{{ patient.date_of_birth }}</span></p>
+        {% endif %}
+        {% if patient.mrn %}
+          <p class="text-gray-600">MRN: <span class="font-medium">{{ patient.mrn }}</span></p>
+        {% endif %}
+      </div>
+
+      <div class="flex gap-2">
+        <a href="{% url 'patients:list' %}" class="px-4 py-2 border rounded hover:bg-gray-50">
+          Back
+        </a>
+        <a href="{% url 'appointments:new' %}?patient={{ patient.id }}" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
+          + New Appointment
+        </a>
+      </div>
+    </div>
+
+    {% if patient.address %}
+      <div class="mt-4">
+        <h2 class="text-sm font-semibold text-gray-700 mb-1">Address</h2>
+        <p class="text-gray-700">{{ patient.address }}</p>
+      </div>
+    {% endif %}
+  </div>
+
+  <div class="mt-6 bg-white shadow rounded p-6">
+    <h2 class="text-lg font-semibold mb-2">Visits</h2>
+    <p class="text-gray-500 text-sm">
+      Coming soon: triage notes and visit history will show here.
+    </p>
+  </div>
+</div>
+
+{% endblock %}

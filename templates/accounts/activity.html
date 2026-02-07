@@ -1,0 +1,124 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="max-w-6xl mx-auto px-4 py-6">
+    <!-- Header with Stats -->
+    <div class="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
+        <h1 class="text-2xl font-semibold mb-4 md:mb-0">Activity Log</h1>
+
+        <div class="flex gap-4 text-sm">
+            <div class="bg-white rounded-lg px-4 py-2 shadow">
+                <span class="text-gray-500">Today:</span>
+                <span class="font-semibold text-blue-600">{{ stats.today_count }}</span>
+            </div>
+            <div class="bg-white rounded-lg px-4 py-2 shadow">
+                <span class="text-gray-500">This Week:</span>
+                <span class="font-semibold text-indigo-600">{{ stats.week_count }}</span>
+            </div>
+            <div class="bg-white rounded-lg px-4 py-2 shadow">
+                <span class="text-gray-500">Total:</span>
+                <span class="font-semibold text-gray-700">{{ stats.total_count }}</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="bg-white shadow rounded-lg p-4 mb-6">
+        <form method="get" class="flex flex-wrap gap-4 items-end">
+            <div class="flex-1 min-w-[200px]">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Search</label>
+                <input type="text" name="q" value="{{ search }}" placeholder="Search by description or user..."
+                    class="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+            </div>
+
+            <div class="w-48">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Action Type</label>
+                <select name="action" class="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500">
+                    <option value="">All Actions</option>
+                    {% for value, label in action_choices %}
+                    <option value="{{ value }}" {% if current_action == value %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="w-40">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Time Range</label>
+                <select name="date" class="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500">
+                    <option value="">All Time</option>
+                    <option value="today" {% if current_date == 'today' %}selected{% endif %}>Today</option>
+                    <option value="week" {% if current_date == 'week' %}selected{% endif %}>Last 7 Days</option>
+                    <option value="month" {% if current_date == 'month' %}selected{% endif %}>Last 30 Days</option>
+                </select>
+            </div>
+
+            <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition">
+                Filter
+            </button>
+
+            {% if search or current_action or current_date %}
+            <a href="{% url 'activity' %}" class="text-gray-500 hover:text-gray-700 px-3 py-2">
+                Clear
+            </a>
+            {% endif %}
+        </form>
+    </div>
+
+    <!-- Activity Table -->
+    <div class="bg-white shadow rounded-lg overflow-hidden">
+        <table class="min-w-full text-sm">
+            <thead class="bg-gray-50 border-b">
+                <tr>
+                    <th class="text-left px-4 py-3 font-medium text-gray-700">Time</th>
+                    <th class="text-left px-4 py-3 font-medium text-gray-700">User</th>
+                    <th class="text-left px-4 py-3 font-medium text-gray-700">Action</th>
+                    <th class="text-left px-4 py-3 font-medium text-gray-700">Description</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-100">
+                {% for log in logs %}
+                <tr class="hover:bg-gray-50 transition">
+                    <td class="px-4 py-3 text-gray-500 whitespace-nowrap">
+                        <div>{{ log.created_at|date:"M d" }}</div>
+                        <div class="text-xs">{{ log.created_at|time:"H:i" }}</div>
+                    </td>
+                    <td class="px-4 py-3">
+                        {% if log.user %}
+                        <div class="flex items-center gap-2">
+                            <div
+                                class="w-8 h-8 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-xs font-semibold">
+                                {{ log.user.username|slice:":2"|upper }}
+                            </div>
+                            <span>{{ log.user.username }}</span>
+                        </div>
+                        {% else %}
+                        <span class="text-gray-400">System</span>
+                        {% endif %}
+                    </td>
+                    <td class="px-4 py-3">
+                        <span
+                            class="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                            {{ log.action_icon }} {{ log.get_action_display }}
+                        </span>
+                    </td>
+                    <td class="px-4 py-3 text-gray-600">
+                        {{ log.description|default:"—" }}
+                        {% if log.target_type and log.target_id %}
+                        <span class="text-gray-400 text-xs ml-1">#{{ log.target_id }}</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="4" class="px-4 py-12 text-center text-gray-500">
+                        No activity recorded yet.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- TODO: Add pagination here later -->
+</div>
+
+{% endblock %}

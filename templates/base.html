@@ -1,20 +1,46 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8" />
-  <title>ClinicFlow</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Clinic App</title>
 
   <!-- Tailwind CDN (dev-friendly) -->
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
+
 <body class="bg-gray-100 min-h-screen">
 
   <!-- Top Nav -->
   <nav class="bg-white shadow mb-6">
-    <div class="max-w-6xl mx-auto px-4 py-3 flex justify-between">
-      <a href="/" class="font-semibold text-lg">ClinicFlow</a>
-      <div class="space-x-4 text-sm">
-        <a href="/patients/" class="text-gray-700 hover:text-blue-600">Patients</a>
+    <div class="max-w-6xl mx-auto px-4 py-3 flex justify-between items-center">
+      <a href="/" class="font-bold text-xl text-blue-600">Clinic App</a>
+
+      <div class="flex items-center space-x-6">
+        <div class="space-x-4 text-sm">
+          <a href="{% url 'patients:list' %}"
+            class="text-gray-700 hover:text-blue-600 {% if request.resolver_match.app_name == 'patients' %}font-semibold text-blue-600{% endif %}">
+            Patients
+          </a>
+          <a href="{% url 'appointments:today' %}"
+            class="text-gray-700 hover:text-blue-600 {% if request.resolver_match.app_name == 'appointments' %}font-semibold text-blue-600{% endif %}">
+            Appointments
+          </a>
+          <a href="{% url 'activity' %}"
+            class="text-gray-700 hover:text-blue-600 {% if request.resolver_match.app_name == 'accounts' or request.path == '/activity/' %}font-semibold text-blue-600{% endif %}">
+            Activity
+          </a>
+        </div>
+
+        <div class="border-l pl-4 text-sm">
+          {% if user.is_authenticated %}
+          <span class="text-gray-500 mr-2">{{ user.username }}</span>
+          <a href="{% url 'logout' %}" class="text-red-600 hover:text-red-700">Logout</a>
+          {% else %}
+          <a href="{% url 'login' %}" class="text-blue-600 hover:text-blue-700">Login</a>
+          {% endif %}
+        </div>
       </div>
     </div>
   </nav>
@@ -25,4 +51,5 @@
   </main>
 
 </body>
+
 </html>

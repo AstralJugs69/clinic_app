@@ -1,25 +1,34 @@
 """
 URL configuration for config project.
-
-The `urlpatterns` list routes URLs to views. For more information please see:
-    https://docs.djangoproject.com/en/6.0/topics/http/urls/
-Examples:
-Function views
-    1. Add an import:  from my_app import views
-    2. Add a URL to urlpatterns:  path('', views.home, name='home')
-Class-based views
-    1. Add an import:  from other_app.views import Home
-    2. Add a URL to urlpatterns:  path('', Home.as_view(), name='home')
-Including another URLconf
-    1. Import the include() function: from django.urls import include, path
-    2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
+
 from django.contrib import admin
 from django.urls import include, path
+from django.views.generic import RedirectView
+from apps.accounts.views import StaffLoginView, logout_view
+from apps.patients import views as patient_views
+from apps.appointments import views as appointment_views
+from apps.accounts import views as account_views
 
 urlpatterns = [
-
-    path('admin/', admin.site.urls),
-    path('', include("apps.patients.urls")),
-    path('patients/', include("apps.patients.urls")),
+    path("admin/", admin.site.urls),
+    path("login/", StaffLoginView.as_view(), name="login"),
+    path("logout/", logout_view, name="logout"),
+    path("", RedirectView.as_view(url="/patients/", permanent=False)),
+    path("patients/", include("apps.patients.urls")),
+    path("appointments/", include("apps.appointments.urls")),
+    path("activity/", account_views.activity, name="activity"),
+    path("accounts/", include("apps.accounts.urls")),
+    path("api/patients/", patient_views.api_patient_list, name="api-patient-list"),
+    path(
+        "api/patients/<int:pk>/",
+        patient_views.api_patient_detail,
+        name="api-patient-detail",
+    ),
+    path(
+        "api/appointments/today/",
+        appointment_views.api_today_appointments,
+        name="api-appointments-today",
+    ),
+    path("api/logs/", account_views.api_logs, name="api-logs"),
 ]
