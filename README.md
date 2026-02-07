@@ -8,7 +8,9 @@ A mini clinic front-desk module for **patient registration**, **appointment sche
 - **Patient Registry**: Create, list, search, and view patient details
 - **Appointments**: Create appointments with datetime, duration, reason, and status
 - **Today's Schedule**: Shows today-only appointments, then applies optional patient-name search
-- **Activity Logging**: Logs login/logout, patient creation, and appointment creation
+- **Realtime Workflow**: Front desk check-in -> doctor accepts -> transfer to room -> room accepts -> complete/transfer
+- **Live Boards**: Front desk, doctor feed, and room feeds update in real time over WebSockets
+- **Activity Logging**: Logs login/logout, patient/appointment creation, and workflow transitions
 - **Read-only API (session auth)**: Patients, patient detail, today's appointments, logs
 
 ## Quick Start
@@ -30,6 +32,7 @@ Create a `.env` file with:
 SECRET_KEY=your-secret-key-here
 DEBUG=True
 ALLOWED_HOSTS=localhost,127.0.0.1
+REDIS_URL=redis://127.0.0.1:6379/0
 
 # Preferred for deployment:
 DATABASE_URL=postgresql://user:password@host:5432/dbname
@@ -41,6 +44,9 @@ DATABASE_PASS=your_db_password
 DATABASE_HOST=your_db_host
 DATABASE_PORT=5432
 ```
+
+`REDIS_URL` is strongly recommended for realtime in multi-worker deployments.
+If omitted, the app falls back to in-memory channels (works only in single-process dev).
 
 ### 3. Run Migrations
 
@@ -62,10 +68,18 @@ python manage.py seed_demo
 
 Demo credentials created by the command:
 
-- Username: `demo_staff`
-- Password: `DemoPass123!`
+- `demo_staff` (receptionist)
+- `demo_doctor` (doctor)
+- `demo_nurse` (nurse)
+- Password for all: `DemoPass123!`
 
 ### 6. Run Development Server
+
+Start Redis locally if you use realtime boards in separate sessions:
+
+```bash
+redis-server
+```
 
 ```bash
 python manage.py runserver
@@ -83,6 +97,9 @@ Visit http://localhost:8000
 | `/patients/<id>/` | Patient detail |
 | `/appointments/` | Today's schedule |
 | `/appointments/new/` | Create new appointment |
+| `/appointments/live/frontdesk/` | Front desk realtime board |
+| `/appointments/live/doctor/` | Doctor realtime feed |
+| `/appointments/live/room/<code>/` | Room realtime feed |
 | `/activity/` | Activity log |
 | `/admin/` | Django Admin |
 
@@ -95,12 +112,20 @@ Visit http://localhost:8000
 | `/api/appointments/today/` | Today's appointments |
 | `/api/logs/` | Recent action logs |
 
+## Realtime Flow Demo
+
+1. Login as `demo_staff` and open `/appointments/live/frontdesk/`, then check in a patient.
+2. Login as `demo_doctor` in a second browser session and open `/appointments/live/doctor/`, accept the patient, then send to `Consultation-2` or another room.
+3. Login as `demo_nurse` in another session and open `/appointments/live/room/CONS2/` (or room code used), accept and complete or transfer.
+4. All active boards update automatically without page refresh.
+
 ## Tech Stack
 
 - **Backend**: Django 6.0
 - **Database**: PostgreSQL (Supabase)
 - **Styling**: Tailwind CSS (CDN)
 - **Auth**: Django Sessions
+- **Realtime**: Django Channels + Redis
 
 ## Project Structure
 

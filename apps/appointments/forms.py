@@ -22,7 +22,6 @@ class AppointmentForm(forms.ModelForm):
             "scheduled_at",
             "duration_minutes",
             "reason",
-            "status",
         ]
         widgets = {
             "patient": forms.Select(attrs={"class": "border rounded px-3 py-2 w-full"}),
@@ -39,7 +38,6 @@ class AppointmentForm(forms.ModelForm):
                     "placeholder": "Reason for visit",
                 }
             ),
-            "status": forms.Select(attrs={"class": "border rounded px-3 py-2 w-full"}),
         }
 
     def __init__(self, *args, **kwargs):

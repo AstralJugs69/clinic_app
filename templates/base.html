@@ -27,6 +27,10 @@
             class="text-gray-700 hover:text-blue-600 {% if request.resolver_match.app_name == 'appointments' %}font-semibold text-blue-600{% endif %}">
             Appointments
           </a>
+          <a href="{% url 'appointments:frontdesk_feed' %}"
+            class="text-gray-700 hover:text-blue-600 {% if '/appointments/live/' in request.path %}font-semibold text-blue-600{% endif %}">
+            Live Boards
+          </a>
           <a href="{% url 'activity' %}"
             class="text-gray-700 hover:text-blue-600 {% if request.resolver_match.app_name == 'accounts' or request.path == '/activity/' %}font-semibold text-blue-600{% endif %}">
             Activity
@@ -47,6 +51,15 @@
 
   <!-- Page Content -->
   <main>
+    {% if messages %}
+    <div class="max-w-6xl mx-auto px-4 pt-4 space-y-2">
+      {% for message in messages %}
+      <div class="px-3 py-2 rounded text-sm {% if message.tags == 'success' %}bg-emerald-50 text-emerald-800 border border-emerald-100{% elif message.tags == 'error' %}bg-red-50 text-red-800 border border-red-100{% else %}bg-blue-50 text-blue-800 border border-blue-100{% endif %}">
+        {{ message }}
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
     {% block content %}{% endblock %}
   </main>
 

@@ -1,0 +1,17 @@
+<script>
+  (function () {
+    const protocol = window.location.protocol === "https:" ? "wss" : "ws";
+    const socket = new WebSocket(`${protocol}://${window.location.host}/ws/flow/`);
+    let reloadPending = false;
+
+    socket.onmessage = function () {
+      if (reloadPending) {
+        return;
+      }
+      reloadPending = true;
+      setTimeout(function () {
+        window.location.reload();
+      }, 180);
+    };
+  })();
+</script>
