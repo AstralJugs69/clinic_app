@@ -33,6 +33,11 @@ SECRET_KEY=your-secret-key-here
 DEBUG=True
 ALLOWED_HOSTS=localhost,127.0.0.1
 REDIS_URL=redis://127.0.0.1:6379/0
+SECURE_SSL_REDIRECT=True
+SESSION_COOKIE_SECURE=True
+CSRF_COOKIE_SECURE=True
+SECURE_HSTS_SECONDS=3600
+SECURE_HSTS_INCLUDE_SUBDOMAINS=True
 
 # Preferred for deployment:
 DATABASE_URL=postgresql://user:password@host:5432/dbname
@@ -86,6 +91,29 @@ python manage.py runserver
 ```
 
 Visit http://localhost:8000
+
+## Deploy Checklist (Realtime Safe)
+
+1. Use ASGI startup command (already in `Procfile`):
+
+```bash
+daphne -b 0.0.0.0 -p $PORT config.asgi:application
+```
+
+2. Set these env vars in your host:
+   - `DEBUG=False`
+   - `SECRET_KEY=<long random key>`
+   - `ALLOWED_HOSTS=<your-domain>`
+   - `DATABASE_URL=<supabase postgres url>`
+   - `REDIS_URL=<managed redis url>`
+
+3. Ensure Redis and web app are in the same network/region.
+
+4. Run deploy check:
+
+```bash
+python manage.py check --deploy
+```
 
 ## Pages
 

@@ -14,9 +14,14 @@ def broadcast_workflow_event(*, appointment, action, actor):
     payload = {
         "appointment_id": appointment.id,
         "patient_id": appointment.patient_id,
+        "patient_name": appointment.patient.full_name,
         "action": action,
         "status": appointment.status,
         "status_label": appointment.get_status_display(),
+        "scheduled_time": timezone.localtime(appointment.scheduled_at).strftime(
+            "%H:%M"
+        ),
+        "reason": appointment.reason or "",
         "room": appointment.assigned_room.code if appointment.assigned_room else None,
         "room_name": appointment.assigned_room.name
         if appointment.assigned_room

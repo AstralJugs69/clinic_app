@@ -1,17 +1,58 @@
 <script>
   (function () {
     const protocol = window.location.protocol === "https:" ? "wss" : "ws";
-    const socket = new WebSocket(`${protocol}://${window.location.host}/ws/flow/`);
-    let reloadPending = false;
+    const socketUrl = `${protocol}://${window.location.host}/ws/flow/`;
+    let socket;
+    let retryCount = 0;
 
-    socket.onmessage = function () {
-      if (reloadPending) {
-        return;
+    function connect() {
+      socket = new WebSocket(socketUrl);
+
+      socket.onopen = function () {
+        retryCount = 0;
+      };
+
+      socket.onmessage = function (event) {
+        let payload;
+        try {
+          payload = JSON.parse(event.data);
+        } catch (err) {
+          return;
+        }
+
+        if (typeof window.clinicFlowHandleEvent === "function") {
+          window.clinicFlowHandleEvent(payload);
+        }
+      };
+
+      socket.onclose = function () {
+        retryCount += 1;
+        const retryDelay = Math.min(3000, 400 + retryCount * 350);
+        window.setTimeout(connect, retryDelay);
+      };
+
+      socket.onerror = function () {
+        if (socket && socket.readyState !== WebSocket.CLOSED) {
+          socket.close();
+        }
+      };
+    }
+
+    if (document.visibilityState !== "prerender") {
+      connect();
+    } else {
+      document.addEventListener("visibilitychange", function onVisible() {
+        if (document.visibilityState === "visible") {
+          document.removeEventListener("visibilitychange", onVisible);
+          connect();
+        }
+      });
+    }
+
+    window.addEventListener("beforeunload", function () {
+      if (socket && socket.readyState === WebSocket.OPEN) {
+        socket.close(1000, "leaving page");
       }
-      reloadPending = true;
-      setTimeout(function () {
-        window.location.reload();
-      }, 180);
-    };
+    });
   })();
 </script>

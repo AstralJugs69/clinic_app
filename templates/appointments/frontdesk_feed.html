@@ -27,14 +27,14 @@
           <th class="px-4 py-2 text-right">Action</th>
         </tr>
       </thead>
-      <tbody>
+      <tbody id="frontdesk-body">
         {% for item in appointments %}
-        <tr class="border-t hover:bg-gray-50">
-          <td class="px-4 py-2">{{ item.scheduled_at|date:"H:i" }}</td>
-          <td class="px-4 py-2 font-medium">{{ item.patient.full_name }}</td>
-          <td class="px-4 py-2">{{ item.get_status_display }}</td>
-          <td class="px-4 py-2">{{ item.assigned_room.name|default:"-" }}</td>
-          <td class="px-4 py-2 text-right">
+        <tr class="border-t hover:bg-gray-50" data-appointment-id="{{ item.id }}">
+          <td class="px-4 py-2" data-field="time">{{ item.scheduled_at|date:"H:i" }}</td>
+          <td class="px-4 py-2 font-medium" data-field="patient">{{ item.patient.full_name }}</td>
+          <td class="px-4 py-2" data-field="status">{{ item.get_status_display }}</td>
+          <td class="px-4 py-2" data-field="room">{{ item.assigned_room.name|default:"-" }}</td>
+          <td class="px-4 py-2 text-right" data-field="action">
             {% if item.status == 'PL' %}
             <form method="post" action="{% url 'appointments:check_in' item.id %}" class="inline">
               {% csrf_token %}
@@ -48,15 +48,103 @@
             {% endif %}
           </td>
         </tr>
-        {% empty %}
-        <tr>
+        {% endfor %}
+        <tr id="frontdesk-empty" class="{% if appointments %}hidden{% endif %}">
           <td colspan="5" class="px-4 py-6 text-center text-gray-500">No appointments in active queue.</td>
         </tr>
-        {% endfor %}
       </tbody>
     </table>
   </div>
 </div>
+
+<script>
+  (function () {
+    const body = document.getElementById("frontdesk-body");
+    const emptyRow = document.getElementById("frontdesk-empty");
+    const activeStatuses = new Set(["PL", "WD", "MD", "WR", "MR"]);
+    const currentPath = window.location.pathname + window.location.search;
+
+    if (!body || !emptyRow) {
+      return;
+    }
+
+    function getCsrfToken() {
+      const match = document.cookie.match(/(?:^|; )csrftoken=([^;]+)/);
+      return match ? decodeURIComponent(match[1]) : "";
+    }
+
+    function escapeHtml(value) {
+      return String(value || "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/\"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+    }
+
+    function toggleEmptyState() {
+      const hasRows = body.querySelector("tr[data-appointment-id]") !== null;
+      emptyRow.classList.toggle("hidden", hasRows);
+    }
+
+    function actionHtml(payload) {
+      if (payload.status !== "PL") {
+        return '<span class="text-gray-400">-</span>';
+      }
+
+      const csrfToken = escapeHtml(getCsrfToken());
+      return [
+        `<form method="post" action="/appointments/${payload.appointment_id}/check-in/" class="inline">`,
+        `<input type="hidden" name="csrfmiddlewaretoken" value="${csrfToken}">`,
+        `<input type="hidden" name="next" value="${escapeHtml(currentPath)}">`,
+        '<button type="submit" class="bg-emerald-600 text-white px-3 py-1.5 rounded hover:bg-emerald-700">Check In</button>',
+        "</form>",
+      ].join("");
+    }
+
+    function ensureRow(payload) {
+      let row = body.querySelector(`tr[data-appointment-id="${payload.appointment_id}"]`);
+      if (!row) {
+        row = document.createElement("tr");
+        row.className = "border-t hover:bg-gray-50";
+        row.dataset.appointmentId = payload.appointment_id;
+        row.innerHTML = [
+          '<td class="px-4 py-2" data-field="time"></td>',
+          '<td class="px-4 py-2 font-medium" data-field="patient"></td>',
+          '<td class="px-4 py-2" data-field="status"></td>',
+          '<td class="px-4 py-2" data-field="room"></td>',
+          '<td class="px-4 py-2 text-right" data-field="action"></td>',
+        ].join("");
+        body.insertBefore(row, emptyRow);
+      }
+      return row;
+    }
+
+    window.clinicFlowHandleEvent = function (payload) {
+      if (!payload || !payload.appointment_id) {
+        return;
+      }
+
+      const existingRow = body.querySelector(`tr[data-appointment-id="${payload.appointment_id}"]`);
+      if (!activeStatuses.has(payload.status)) {
+        if (existingRow) {
+          existingRow.remove();
+        }
+        toggleEmptyState();
+        return;
+      }
+
+      const row = ensureRow(payload);
+      row.querySelector('[data-field="time"]').textContent = payload.scheduled_time || "";
+      row.querySelector('[data-field="patient"]').textContent = payload.patient_name || "Patient";
+      row.querySelector('[data-field="status"]').textContent = payload.status_label || payload.status;
+      row.querySelector('[data-field="room"]').textContent = payload.room_name || "-";
+      row.querySelector('[data-field="action"]').innerHTML = actionHtml(payload);
+
+      toggleEmptyState();
+    };
+  })();
+</script>
 
 {% include "appointments/_live_socket.html" %}
 {% endblock %}

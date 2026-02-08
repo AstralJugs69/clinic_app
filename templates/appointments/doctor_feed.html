@@ -18,9 +18,9 @@
   <div class="grid md:grid-cols-2 gap-5">
     <div class="bg-white shadow rounded p-4">
       <h2 class="text-lg font-semibold mb-3">Waiting for Doctor</h2>
-      <div class="space-y-3">
+      <div class="space-y-3" id="doctor-waiting-list">
         {% for item in waiting_doctor %}
-        <div class="border rounded p-3 flex items-center justify-between gap-3">
+        <div class="border rounded p-3 flex items-center justify-between gap-3" data-appointment-id="{{ item.id }}">
           <div>
             <p class="font-medium">{{ item.patient.full_name }}</p>
             <p class="text-sm text-gray-500">{{ item.scheduled_at|date:"H:i" }} · {{ item.reason|default:"No reason" }}</p>
@@ -31,17 +31,16 @@
             <button type="submit" class="bg-blue-600 text-white px-3 py-1.5 rounded hover:bg-blue-700">Accept</button>
           </form>
         </div>
-        {% empty %}
-        <p class="text-sm text-gray-500">No patients waiting for doctor.</p>
         {% endfor %}
       </div>
+      <p id="doctor-waiting-empty" class="text-sm text-gray-500 {% if waiting_doctor %}hidden{% endif %}">No patients waiting for doctor.</p>
     </div>
 
     <div class="bg-white shadow rounded p-4">
       <h2 class="text-lg font-semibold mb-3">With Doctor</h2>
-      <div class="space-y-3">
+      <div class="space-y-3" id="doctor-active-list">
         {% for item in with_doctor %}
-        <div class="border rounded p-3 space-y-2">
+        <div class="border rounded p-3 space-y-2" data-appointment-id="{{ item.id }}">
           <div>
             <p class="font-medium">{{ item.patient.full_name }}</p>
             <p class="text-sm text-gray-500">{{ item.scheduled_at|date:"H:i" }} · {{ item.reason|default:"No reason" }}</p>
@@ -58,13 +57,124 @@
             <button type="submit" class="bg-amber-600 text-white px-3 py-1.5 rounded hover:bg-amber-700">Send</button>
           </form>
         </div>
-        {% empty %}
-        <p class="text-sm text-gray-500">No patients currently with doctor.</p>
         {% endfor %}
       </div>
+      <p id="doctor-active-empty" class="text-sm text-gray-500 {% if with_doctor %}hidden{% endif %}">No patients currently with doctor.</p>
     </div>
   </div>
 </div>
+
+<script>
+  (function () {
+    const waitingList = document.getElementById("doctor-waiting-list");
+    const activeList = document.getElementById("doctor-active-list");
+    const waitingEmpty = document.getElementById("doctor-waiting-empty");
+    const activeEmpty = document.getElementById("doctor-active-empty");
+    const currentPath = window.location.pathname + window.location.search;
+    const roomOptionsHtml = '{% for room_item in rooms %}<option value="{{ room_item.id }}">{{ room_item.name|escapejs }}</option>{% endfor %}';
+
+    if (!waitingList || !activeList || !waitingEmpty || !activeEmpty) {
+      return;
+    }
+
+    function getCsrfToken() {
+      const match = document.cookie.match(/(?:^|; )csrftoken=([^;]+)/);
+      return match ? decodeURIComponent(match[1]) : "";
+    }
+
+    function escapeHtml(value) {
+      return String(value || "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/\"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+    }
+
+    function toggleEmptyState() {
+      waitingEmpty.classList.toggle(
+        "hidden",
+        waitingList.querySelector("[data-appointment-id]") !== null
+      );
+      activeEmpty.classList.toggle(
+        "hidden",
+        activeList.querySelector("[data-appointment-id]") !== null
+      );
+    }
+
+    function removeExistingCard(appointmentId) {
+      const waitingCard = waitingList.querySelector(`[data-appointment-id="${appointmentId}"]`);
+      const activeCard = activeList.querySelector(`[data-appointment-id="${appointmentId}"]`);
+
+      if (waitingCard) {
+        waitingCard.remove();
+      }
+      if (activeCard) {
+        activeCard.remove();
+      }
+    }
+
+    function waitingCardHtml(payload) {
+      const csrfToken = escapeHtml(getCsrfToken());
+      const reason = payload.reason ? escapeHtml(payload.reason) : "No reason";
+
+      return [
+        `<div class="border rounded p-3 flex items-center justify-between gap-3" data-appointment-id="${payload.appointment_id}">`,
+        "<div>",
+        `<p class="font-medium">${escapeHtml(payload.patient_name || "Patient")}</p>`,
+        `<p class="text-sm text-gray-500">${escapeHtml(payload.scheduled_time || "--:--")} · ${reason}</p>`,
+        "</div>",
+        `<form method="post" action="/appointments/${payload.appointment_id}/doctor-accept/">`,
+        `<input type="hidden" name="csrfmiddlewaretoken" value="${csrfToken}">`,
+        `<input type="hidden" name="next" value="${escapeHtml(currentPath)}">`,
+        '<button type="submit" class="bg-blue-600 text-white px-3 py-1.5 rounded hover:bg-blue-700">Accept</button>',
+        "</form>",
+        "</div>",
+      ].join("");
+    }
+
+    function activeCardHtml(payload) {
+      const csrfToken = escapeHtml(getCsrfToken());
+      const reason = payload.reason ? escapeHtml(payload.reason) : "No reason";
+
+      return [
+        `<div class="border rounded p-3 space-y-2" data-appointment-id="${payload.appointment_id}">`,
+        "<div>",
+        `<p class="font-medium">${escapeHtml(payload.patient_name || "Patient")}</p>`,
+        `<p class="text-sm text-gray-500">${escapeHtml(payload.scheduled_time || "--:--")} · ${reason}</p>`,
+        "</div>",
+        `<form method="post" action="/appointments/${payload.appointment_id}/send-room/" class="flex items-center gap-2">`,
+        `<input type="hidden" name="csrfmiddlewaretoken" value="${csrfToken}">`,
+        `<input type="hidden" name="next" value="${escapeHtml(currentPath)}">`,
+        '<select name="room_id" class="border rounded px-2 py-1.5 text-sm flex-1" required>',
+        '<option value="">Select room</option>',
+        roomOptionsHtml,
+        "</select>",
+        '<button type="submit" class="bg-amber-600 text-white px-3 py-1.5 rounded hover:bg-amber-700">Send</button>',
+        "</form>",
+        "</div>",
+      ].join("");
+    }
+
+    window.clinicFlowHandleEvent = function (payload) {
+      if (!payload || !payload.appointment_id) {
+        return;
+      }
+
+      removeExistingCard(payload.appointment_id);
+
+      if (payload.status === "WD") {
+        waitingList.insertAdjacentHTML("beforeend", waitingCardHtml(payload));
+      } else if (payload.status === "MD") {
+        activeList.insertAdjacentHTML("beforeend", activeCardHtml(payload));
+      }
+
+      toggleEmptyState();
+    };
+
+    toggleEmptyState();
+  })();
+</script>
 
 {% include "appointments/_live_socket.html" %}
 {% endblock %}
