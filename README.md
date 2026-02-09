@@ -10,6 +10,7 @@ A mini clinic front-desk module for **patient registration**, **appointment sche
 - **Today's Schedule**: Shows today-only appointments, then applies optional patient-name search
 - **Realtime Workflow**: Front desk check-in -> doctor accepts -> transfer to room -> room accepts -> complete/transfer
 - **Live Boards**: Front desk, doctor feed, and room feeds update in real time over WebSockets
+- **Front Desk Intake**: Register walk-ins, flag emergencies, and jump to new patient registration from one screen
 - **Activity Logging**: Logs login/logout, patient/appointment creation, and workflow transitions
 - **Read-only API (session auth)**: Patients, patient detail, today's appointments, logs
 
@@ -33,13 +34,23 @@ SECRET_KEY=your-secret-key-here
 DEBUG=True
 ALLOWED_HOSTS=localhost,127.0.0.1
 REDIS_URL=redis://127.0.0.1:6379/0
+DB_TARGET=local
+
+# Local mode options:
+# 1) Leave LOCAL_DATABASE_URL empty to use local SQLite (db.sqlite3)
+# 2) Set LOCAL_DATABASE_URL for local PostgreSQL
+LOCAL_DATABASE_URL=
+
+# Hosted DB URL (Supabase/Neon/etc)
+SUPABASE_DATABASE_URL=postgresql://user:password@host:5432/dbname
+
 SECURE_SSL_REDIRECT=True
 SESSION_COOKIE_SECURE=True
 CSRF_COOKIE_SECURE=True
 SECURE_HSTS_SECONDS=3600
 SECURE_HSTS_INCLUDE_SUBDOMAINS=True
 
-# Preferred for deployment:
+# Backward compatibility fallback:
 DATABASE_URL=postgresql://user:password@host:5432/dbname
 
 # Fallback if DATABASE_URL is not set:
@@ -52,6 +63,12 @@ DATABASE_PORT=5432
 
 `REDIS_URL` is strongly recommended for realtime in multi-worker deployments.
 If omitted, the app falls back to in-memory channels (works only in single-process dev).
+
+Database target switching is env-only:
+
+- `DB_TARGET=local` -> uses `LOCAL_DATABASE_URL`, or `db.sqlite3` if empty
+- `DB_TARGET=supabase` -> uses `SUPABASE_DATABASE_URL`
+- `DB_TARGET=auto` -> uses `DATABASE_URL` first (legacy mode)
 
 ### 3. Run Migrations
 
@@ -142,10 +159,14 @@ python manage.py check --deploy
 
 ## Realtime Flow Demo
 
-1. Login as `demo_staff` and open `/appointments/live/frontdesk/`, then check in a patient.
-2. Login as `demo_doctor` in a second browser session and open `/appointments/live/doctor/`, accept the patient, then send to `Consultation-2` or another room.
-3. Login as `demo_nurse` in another session and open `/appointments/live/room/CONS2/` (or room code used), accept and complete or transfer.
-4. All active boards update automatically without page refresh.
+1. Login as `demo_staff` and open `/appointments/live/frontdesk/`.
+2. Use **Register Walk-In Check-In** for:
+   - normal walk-in check-ins
+   - emergency check-ins (toggle emergency)
+   - quick links to create a new patient or scheduled appointment
+3. Login as `demo_doctor` in a second browser session and open `/appointments/live/doctor/`, accept the patient, then send to `Consultation-2` or another room.
+4. Login as `demo_nurse` in another session and open `/appointments/live/room/CONS2/` (or room code used), accept and complete or transfer.
+5. All active boards update automatically without page refresh.
 
 ## Tech Stack
 

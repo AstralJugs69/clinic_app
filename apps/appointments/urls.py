@@ -7,6 +7,7 @@ urlpatterns = [
     path("", views.appointment_today, name="today"),
     path("new/", views.appointment_new, name="new"),
     path("live/frontdesk/", views.frontdesk_feed, name="frontdesk_feed"),
+    path("live/frontdesk/intake/", views.frontdesk_intake, name="frontdesk_intake"),
     path("live/doctor/", views.doctor_feed, name="doctor_feed"),
     path("live/room/<str:room_code>/", views.room_feed, name="room_feed"),
     path("<int:pk>/check-in/", views.appointment_check_in, name="check_in"),

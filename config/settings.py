@@ -90,30 +90,53 @@ TEMPLATES = [
 WSGI_APPLICATION = "config.wsgi.application"
 ASGI_APPLICATION = "config.asgi.application"
 
-DATABASE_URL = os.getenv("DATABASE_URL")
-if DATABASE_URL:
-    try:
-        DATABASES = {
-            "default": dj_database_url.parse(
-                DATABASE_URL,
-                conn_max_age=600,
-                ssl_require=not DEBUG,
-            )
-        }
-    except dj_database_url.ParseError:
-        DATABASE_URL = ""
+DB_TARGET = os.getenv("DB_TARGET", "auto").strip().lower()
+DATABASE_URL = os.getenv("DATABASE_URL", "").strip()
+LOCAL_DATABASE_URL = os.getenv("LOCAL_DATABASE_URL", "").strip()
+SUPABASE_DATABASE_URL = os.getenv("SUPABASE_DATABASE_URL", "").strip()
 
-if not DATABASE_URL:
+if DB_TARGET == "local":
+    selected_database_url = LOCAL_DATABASE_URL
+elif DB_TARGET == "supabase":
+    selected_database_url = SUPABASE_DATABASE_URL or DATABASE_URL
+else:
+    selected_database_url = DATABASE_URL or SUPABASE_DATABASE_URL or LOCAL_DATABASE_URL
+
+if DB_TARGET == "local" and not selected_database_url:
     DATABASES = {
         "default": {
-            "ENGINE": "django.db.backends.postgresql",
-            "NAME": os.getenv("DATABASE_NAME"),
-            "USER": os.getenv("DATABASE_USER"),
-            "PASSWORD": os.getenv("DATABASE_PASS"),
-            "HOST": os.getenv("DATABASE_HOST"),
-            "PORT": os.getenv("DATABASE_PORT"),
+            "ENGINE": "django.db.backends.sqlite3",
+            "NAME": BASE_DIR / "db.sqlite3",
         }
     }
+else:
+    if selected_database_url:
+        try:
+            default_db_ssl = (
+                DB_TARGET == "supabase" or "supabase.co" in selected_database_url
+            )
+            db_ssl_require = env_bool("DB_SSL_REQUIRE", default=default_db_ssl)
+            DATABASES = {
+                "default": dj_database_url.parse(
+                    selected_database_url,
+                    conn_max_age=600,
+                    ssl_require=db_ssl_require,
+                )
+            }
+        except dj_database_url.ParseError:
+            selected_database_url = ""
+
+    if not selected_database_url:
+        DATABASES = {
+            "default": {
+                "ENGINE": "django.db.backends.postgresql",
+                "NAME": os.getenv("DATABASE_NAME"),
+                "USER": os.getenv("DATABASE_USER"),
+                "PASSWORD": os.getenv("DATABASE_PASS"),
+                "HOST": os.getenv("DATABASE_HOST"),
+                "PORT": os.getenv("DATABASE_PORT"),
+            }
+        }
 
 REDIS_URL = os.getenv("REDIS_URL")
 if REDIS_URL:

@@ -3,6 +3,7 @@ from datetime import timedelta
 from django.contrib.auth import get_user_model
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.test import TestCase
+from django.urls import reverse
 from django.utils import timezone
 
 from apps.accounts.models import UserProfile
@@ -132,3 +133,48 @@ class WorkflowTests(TestCase):
         )
         self.assertEqual(updated.status, Appointment.STATUS_WAITING_ROOM)
         self.assertEqual(updated.assigned_room_id, self.room_pharm.id)
+
+
+class FrontdeskIntakeTests(TestCase):
+    def setUp(self):
+        User = get_user_model()
+        self.receptionist = User.objects.create_user("reception", password="pass1234")
+        UserProfile.objects.create(user=self.receptionist, role="receptionist")
+        self.patient = Patient.objects.create(
+            full_name="Walk In",
+            phone="+251922333444",
+            sex="F",
+        )
+
+    def test_frontdesk_intake_creates_checked_in_appointment(self):
+        self.client.force_login(self.receptionist)
+
+        response = self.client.post(
+            reverse("appointments:frontdesk_intake"),
+            {
+                "patient": self.patient.id,
+                "reason": "Headache",
+                "duration_minutes": 20,
+            },
+        )
+
+        self.assertEqual(response.status_code, 302)
+        appointment = Appointment.objects.get(patient=self.patient)
+        self.assertEqual(appointment.status, Appointment.STATUS_WAITING_DOCTOR)
+        self.assertEqual(appointment.reason, "Headache")
+
+    def test_frontdesk_intake_emergency_tags_reason(self):
+        self.client.force_login(self.receptionist)
+
+        self.client.post(
+            reverse("appointments:frontdesk_intake"),
+            {
+                "patient": self.patient.id,
+                "reason": "Chest pain",
+                "duration_minutes": 20,
+                "emergency": "on",
+            },
+        )
+
+        appointment = Appointment.objects.get(patient=self.patient)
+        self.assertTrue(appointment.reason.startswith("[EMERGENCY]"))

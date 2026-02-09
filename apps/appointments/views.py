@@ -7,7 +7,7 @@ from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 
-from .forms import AppointmentForm
+from .forms import AppointmentForm, FrontdeskIntakeForm
 from .models import Appointment, CareRoom
 from .realtime import broadcast_workflow_event
 from .workflow import transition_appointment
@@ -102,8 +102,74 @@ def frontdesk_feed(request):
         {
             "appointments": appointments,
             "rooms": _rooms_queryset(),
+            "intake_form": FrontdeskIntakeForm(),
         },
     )
+
+
+@login_required
+@require_POST
+def frontdesk_intake(request):
+    appointments = _today_queryset().exclude(
+        status__in=[Appointment.STATUS_COMPLETED, Appointment.STATUS_CANCELLED]
+    )
+    intake_form = FrontdeskIntakeForm(request.POST)
+    if not intake_form.is_valid():
+        messages.error(request, "Please fix the intake form and try again.")
+        return render(
+            request,
+            "appointments/frontdesk_feed.html",
+            {
+                "appointments": appointments,
+                "rooms": _rooms_queryset(),
+                "intake_form": intake_form,
+            },
+        )
+
+    patient = intake_form.cleaned_data["patient"]
+    reason = intake_form.cleaned_data["reason"].strip()
+    emergency = intake_form.cleaned_data["emergency"]
+
+    if emergency:
+        reason = f"[EMERGENCY] {reason}" if reason else "[EMERGENCY] Walk-in"
+    elif not reason:
+        reason = "Walk-in check-in"
+
+    appointment = Appointment.objects.create(
+        patient=patient,
+        scheduled_at=timezone.now(),
+        duration_minutes=intake_form.cleaned_data["duration_minutes"],
+        reason=reason,
+        status=Appointment.STATUS_PLANNED,
+    )
+
+    try:
+        checked_in_appointment, _event = transition_appointment(
+            appointment_id=appointment.id,
+            action="check_in",
+            user=request.user,
+        )
+    except PermissionDenied as exc:
+        appointment.delete()
+        messages.error(request, str(exc))
+        return redirect("appointments:frontdesk_feed")
+    except ValidationError as exc:
+        appointment.delete()
+        messages.error(request, _validation_error_text(exc))
+        return redirect("appointments:frontdesk_feed")
+
+    log_action(
+        request,
+        action="created_appointment",
+        target_type="appointment",
+        target_id=checked_in_appointment.id,
+        description=f"Created front desk intake: {checked_in_appointment.patient.full_name}",
+    )
+    messages.success(
+        request,
+        f"Checked in {checked_in_appointment.patient.full_name}",
+    )
+    return redirect("appointments:frontdesk_feed")
 
 
 @login_required
