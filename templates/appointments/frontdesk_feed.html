@@ -19,6 +19,21 @@
     </div>
   </div>
 
+  <div class="grid md:grid-cols-3 gap-3">
+    <div class="bg-white shadow rounded p-3">
+      <p class="text-xs text-gray-500">Queued (Planned)</p>
+      <p class="text-xl font-semibold text-gray-800">{{ queue_counts.planned }}</p>
+    </div>
+    <div class="bg-white shadow rounded p-3">
+      <p class="text-xs text-gray-500">Checked In Waiting Doctor</p>
+      <p class="text-xl font-semibold text-blue-700">{{ queue_counts.waiting_doctor }}</p>
+    </div>
+    <div class="bg-white shadow rounded p-3">
+      <p class="text-xs text-gray-500">Emergency in Queue</p>
+      <p class="text-xl font-semibold text-red-700">{{ queue_counts.emergency }}</p>
+    </div>
+  </div>
+
   <div class="grid lg:grid-cols-3 gap-4">
     <div class="lg:col-span-2 bg-white shadow rounded p-4">
       <h2 class="text-lg font-semibold">Register Walk-In Check-In</h2>
@@ -103,7 +118,21 @@
             <span class="ml-2 inline-flex items-center px-2 py-0.5 rounded-full bg-red-100 text-red-700 text-xs font-semibold">Emergency</span>
             {% endif %}
           </td>
-          <td class="px-4 py-2" data-field="status">{{ item.get_status_display }}</td>
+          <td class="px-4 py-2" data-field="status">
+            {% if item.status == 'PL' %}
+            <span class="inline-flex px-2 py-1 rounded-full bg-gray-100 text-gray-700 text-xs font-medium">Queued</span>
+            {% elif item.status == 'WD' %}
+            <span class="inline-flex px-2 py-1 rounded-full bg-blue-100 text-blue-700 text-xs font-medium">Checked In</span>
+            {% elif item.status == 'MD' %}
+            <span class="inline-flex px-2 py-1 rounded-full bg-indigo-100 text-indigo-700 text-xs font-medium">With Doctor</span>
+            {% elif item.status == 'WR' %}
+            <span class="inline-flex px-2 py-1 rounded-full bg-amber-100 text-amber-700 text-xs font-medium">Waiting Room</span>
+            {% elif item.status == 'MR' %}
+            <span class="inline-flex px-2 py-1 rounded-full bg-teal-100 text-teal-700 text-xs font-medium">In Room</span>
+            {% else %}
+            <span class="inline-flex px-2 py-1 rounded-full bg-gray-100 text-gray-700 text-xs font-medium">{{ item.get_status_display }}</span>
+            {% endif %}
+          </td>
           <td class="px-4 py-2" data-field="room">{{ item.assigned_room.name|default:"-" }}</td>
           <td class="px-4 py-2 text-right" data-field="action">
             {% if item.status == 'PL' and not doctor_busy %}
@@ -193,6 +222,25 @@
       return `${escapeHtml(payload.patient_name || "Patient")}${badge}`;
     }
 
+    function statusHtml(statusCode, statusLabel) {
+      if (statusCode === "PL") {
+        return '<span class="inline-flex px-2 py-1 rounded-full bg-gray-100 text-gray-700 text-xs font-medium">Queued</span>';
+      }
+      if (statusCode === "WD") {
+        return '<span class="inline-flex px-2 py-1 rounded-full bg-blue-100 text-blue-700 text-xs font-medium">Checked In</span>';
+      }
+      if (statusCode === "MD") {
+        return '<span class="inline-flex px-2 py-1 rounded-full bg-indigo-100 text-indigo-700 text-xs font-medium">With Doctor</span>';
+      }
+      if (statusCode === "WR") {
+        return '<span class="inline-flex px-2 py-1 rounded-full bg-amber-100 text-amber-700 text-xs font-medium">Waiting Room</span>';
+      }
+      if (statusCode === "MR") {
+        return '<span class="inline-flex px-2 py-1 rounded-full bg-teal-100 text-teal-700 text-xs font-medium">In Room</span>';
+      }
+      return `<span class="inline-flex px-2 py-1 rounded-full bg-gray-100 text-gray-700 text-xs font-medium">${escapeHtml(statusLabel || statusCode || "Unknown")}</span>`;
+    }
+
     function ensureRow(payload) {
       let row = body.querySelector(`tr[data-appointment-id="${payload.appointment_id}"]`);
       if (!row) {
@@ -252,7 +300,7 @@
         : "border-t hover:bg-gray-50";
       row.dataset.statusCode = payload.status || "";
       row.querySelector('[data-field="patient"]').innerHTML = patientHtml(payload);
-      row.querySelector('[data-field="status"]').textContent = payload.status_label || payload.status;
+      row.querySelector('[data-field="status"]').innerHTML = statusHtml(payload.status, payload.status_label);
       row.querySelector('[data-field="room"]').textContent = payload.room_name || "-";
 
       recalculateDoctorBusy();

@@ -5,7 +5,7 @@
   <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
     <div>
       <h1 class="text-2xl font-semibold">Doctor Live Feed</h1>
-      <p class="text-sm text-gray-500">Accept checked-in patients and send them to the next room.</p>
+      <p class="text-sm text-gray-500">Focus on one active treatment, then route to next room.</p>
       {% if doctor_busy %}
       <p class="text-xs text-amber-700 mt-1">Doctor is already with a patient. Accept is paused until current session is transferred.</p>
       {% endif %}
@@ -18,9 +18,20 @@
     </div>
   </div>
 
+  <div class="grid md:grid-cols-2 gap-3">
+    <div class="bg-white shadow rounded p-3">
+      <p class="text-xs text-gray-500">Current Treatment</p>
+      <p class="text-xl font-semibold text-indigo-700">{{ with_doctor|length }}</p>
+    </div>
+    <div class="bg-white shadow rounded p-3">
+      <p class="text-xs text-gray-500">Waiting for Doctor</p>
+      <p class="text-xl font-semibold text-blue-700">{{ waiting_doctor|length }}</p>
+    </div>
+  </div>
+
   <div class="grid md:grid-cols-2 gap-5">
-    <div class="bg-white shadow rounded p-4">
-      <h2 class="text-lg font-semibold mb-3">Waiting for Doctor</h2>
+    <div class="bg-white shadow rounded p-4 md:order-2">
+      <h2 class="text-lg font-semibold mb-3">Waiting Queue</h2>
       <div class="space-y-3" id="doctor-waiting-list">
         {% for item in waiting_doctor %}
         <div class="border rounded p-3 flex items-center justify-between gap-3" data-appointment-id="{{ item.id }}">
@@ -36,11 +47,11 @@
         </div>
         {% endfor %}
       </div>
-      <p id="doctor-waiting-empty" class="text-sm text-gray-500 {% if waiting_doctor %}hidden{% endif %}">No patients waiting for doctor.</p>
+      <p id="doctor-waiting-empty" class="text-sm text-gray-500 {% if waiting_doctor %}hidden{% endif %}">No patients waiting in queue.</p>
     </div>
 
-    <div class="bg-white shadow rounded p-4">
-      <h2 class="text-lg font-semibold mb-3">With Doctor</h2>
+    <div class="bg-white shadow rounded p-4 md:order-1">
+      <h2 class="text-lg font-semibold mb-3">Current Treatment</h2>
       <div class="space-y-3" id="doctor-active-list">
         {% for item in with_doctor %}
         <div class="border rounded p-3 space-y-2" data-appointment-id="{{ item.id }}">
@@ -62,7 +73,7 @@
         </div>
         {% endfor %}
       </div>
-      <p id="doctor-active-empty" class="text-sm text-gray-500 {% if with_doctor %}hidden{% endif %}">No patients currently with doctor.</p>
+      <p id="doctor-active-empty" class="text-sm text-gray-500 {% if with_doctor %}hidden{% endif %}">Doctor is available. Accept a patient from queue.</p>
     </div>
   </div>
 </div>

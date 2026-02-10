@@ -82,6 +82,7 @@ TEMPLATES = [
                 "django.template.context_processors.request",
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
+                "apps.accounts.context_processors.role_navigation",
             ],
         },
     },
@@ -210,5 +211,5 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 # Authentication settings
 LOGIN_URL = "/login/"
-LOGIN_REDIRECT_URL = "/patients/"
+LOGIN_REDIRECT_URL = "/appointments/live/frontdesk/"
 LOGOUT_REDIRECT_URL = "/login/"

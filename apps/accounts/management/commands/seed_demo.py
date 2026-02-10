@@ -261,6 +261,7 @@ class Command(BaseCommand):
                 appointment_id=appointment.id,
                 action="check_in",
                 user=receptionist,
+                enforce_doctor_capacity=False,
             )
 
         if target_status in {
@@ -274,6 +275,7 @@ class Command(BaseCommand):
                 appointment_id=appointment.id,
                 action="doctor_accept",
                 user=doctor,
+                enforce_doctor_capacity=False,
             )
 
         if target_status in {
@@ -288,6 +290,7 @@ class Command(BaseCommand):
                 action="transfer_to_room",
                 user=doctor,
                 room_id=destination_room.id,
+                enforce_doctor_capacity=False,
             )
 
         if target_status in {
@@ -299,6 +302,7 @@ class Command(BaseCommand):
                 appointment_id=appointment.id,
                 action="room_accept",
                 user=nurse,
+                enforce_doctor_capacity=False,
             )
 
         if target_status == Appointment.STATUS_COMPLETED:
@@ -314,17 +318,20 @@ class Command(BaseCommand):
                         action="room_transfer",
                         user=nurse,
                         room_id=transfer_room.id,
+                        enforce_doctor_capacity=False,
                     )
                     appointment, _event = transition_appointment(
                         appointment_id=appointment.id,
                         action="room_accept",
                         user=nurse,
+                        enforce_doctor_capacity=False,
                     )
 
             appointment, _event = transition_appointment(
                 appointment_id=appointment.id,
                 action="complete",
                 user=nurse,
+                enforce_doctor_capacity=False,
             )
 
     def _seed_patients(self, *, count, rng, receptionist_user):

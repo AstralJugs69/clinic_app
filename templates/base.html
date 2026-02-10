@@ -15,31 +15,67 @@
   <!-- Top Nav -->
   <nav class="bg-white shadow mb-6">
     <div class="max-w-6xl mx-auto px-4 py-3 flex justify-between items-center">
-      <a href="/" class="font-bold text-xl text-blue-600">Clinic App</a>
+      <a href="{% if user.is_authenticated %}{{ role_home_url }}{% else %}/{% endif %}" class="font-bold text-xl text-blue-600">ClinicFlow Lite</a>
 
       <div class="flex items-center space-x-6">
         <div class="space-x-4 text-sm">
+          {% if user.is_authenticated %}
+          <a href="{{ role_home_url }}" class="text-gray-700 hover:text-blue-600 {% if request.path == role_home_url %}font-semibold text-blue-600{% endif %}">
+            Home
+          </a>
+
+          {% if user_role == 'receptionist' or user_role == 'admin' %}
+          <a href="{% url 'appointments:frontdesk_feed' %}"
+            class="text-gray-700 hover:text-blue-600 {% if '/appointments/live/frontdesk/' in request.path %}font-semibold text-blue-600{% endif %}">
+            Front Desk
+          </a>
           <a href="{% url 'patients:list' %}"
             class="text-gray-700 hover:text-blue-600 {% if request.resolver_match.app_name == 'patients' %}font-semibold text-blue-600{% endif %}">
             Patients
           </a>
           <a href="{% url 'appointments:today' %}"
-            class="text-gray-700 hover:text-blue-600 {% if request.resolver_match.app_name == 'appointments' %}font-semibold text-blue-600{% endif %}">
-            Appointments
+            class="text-gray-700 hover:text-blue-600 {% if request.path == '/appointments/' or request.path == '/appointments/new/' %}font-semibold text-blue-600{% endif %}">
+            Schedule
           </a>
-          <a href="{% url 'appointments:frontdesk_feed' %}"
-            class="text-gray-700 hover:text-blue-600 {% if '/appointments/live/' in request.path %}font-semibold text-blue-600{% endif %}">
-            Live Boards
+          {% endif %}
+
+          {% if user_role == 'doctor' or user_role == 'admin' %}
+          <a href="{% url 'appointments:doctor_feed' %}"
+            class="text-gray-700 hover:text-blue-600 {% if '/appointments/live/doctor/' in request.path %}font-semibold text-blue-600{% endif %}">
+            Doctor Feed
           </a>
+          {% endif %}
+
+          {% if user_role == 'nurse' %}
+          <a href="{{ role_home_url }}"
+            class="text-gray-700 hover:text-blue-600 {% if '/appointments/live/room/' in request.path %}font-semibold text-blue-600{% endif %}">
+            Room Feed
+          </a>
+          {% endif %}
+
+          {% if user_role == 'admin' %}
+          {% for room_item in nav_rooms %}
+          <a href="{% url 'appointments:room_feed' room_item.code %}"
+            class="text-gray-700 hover:text-blue-600 {% if '/appointments/live/room/' in request.path %}font-semibold text-blue-600{% endif %}">
+            {{ room_item.code }}
+          </a>
+          {% endfor %}
           <a href="{% url 'activity' %}"
-            class="text-gray-700 hover:text-blue-600 {% if request.resolver_match.app_name == 'accounts' or request.path == '/activity/' %}font-semibold text-blue-600{% endif %}">
+            class="text-gray-700 hover:text-blue-600 {% if request.path == '/activity/' %}font-semibold text-blue-600{% endif %}">
             Activity
           </a>
+          <a href="{% url 'accounts:staff_list' %}"
+            class="text-gray-700 hover:text-blue-600 {% if request.path == '/accounts/staff/' %}font-semibold text-blue-600{% endif %}">
+            Staff
+          </a>
+          {% endif %}
+          {% endif %}
         </div>
 
         <div class="border-l pl-4 text-sm">
           {% if user.is_authenticated %}
-          <span class="text-gray-500 mr-2">{{ user.username }}</span>
+          <a href="{% url 'accounts:profile' %}" class="text-gray-500 mr-2 hover:text-blue-600">{{ user.username }}</a>
+          <span class="text-xs uppercase tracking-wide text-gray-400 mr-2">{{ user_role|default:'staff' }}</span>
           <a href="{% url 'logout' %}" class="text-red-600 hover:text-red-700">Logout</a>
           {% else %}
           <a href="{% url 'login' %}" class="text-blue-600 hover:text-blue-700">Login</a>

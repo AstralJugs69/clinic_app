@@ -10,12 +10,19 @@ from django.http import JsonResponse
 from datetime import timedelta
 from .models import ActionLog, UserProfile
 from .utils import log_action
+from .permissions import role_home_url, role_required
 
 User = get_user_model()
 
 
 class StaffLoginView(LoginView):
     template_name = "registration/login.html"
+
+    def get_success_url(self):
+        next_url = self.get_redirect_url()
+        if next_url:
+            return next_url
+        return role_home_url(self.request.user)
 
     def form_valid(self, form):
         response = super().form_valid(form)
@@ -44,7 +51,14 @@ def logout_view(request):
     return redirect("login")
 
 
+def home_redirect(request):
+    if not request.user.is_authenticated:
+        return redirect("login")
+    return redirect(role_home_url(request.user))
+
+
 @login_required
+@role_required("admin")
 def activity(request):
     """Display activity logs with filtering and pagination."""
     logs = ActionLog.objects.select_related("user")
@@ -104,6 +118,7 @@ def activity(request):
 
 
 @login_required
+@role_required("admin")
 def api_logs(request):
     logs = ActionLog.objects.select_related("user")[:50]
     payload = [
@@ -146,12 +161,9 @@ def profile(request):
 
 
 @login_required
+@role_required("admin")
 def staff_list(request):
     """View list of staff members (admin only)."""
-    if not request.user.is_staff:
-        messages.error(request, "You don't have permission to view this page.")
-        return redirect("patients:list")
-
     profiles = UserProfile.objects.select_related("user").filter(is_active_staff=True)
 
     # Filter by role

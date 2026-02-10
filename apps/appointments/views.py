@@ -12,6 +12,7 @@ from .models import Appointment, CareRoom
 from .realtime import broadcast_workflow_event
 from .workflow import transition_appointment
 from apps.accounts.utils import log_action
+from apps.accounts.permissions import role_home_url, role_required
 
 
 def _today_queryset():
@@ -41,7 +42,18 @@ def _validation_error_text(error):
     return str(error)
 
 
+def _frontdesk_queue_counts(appointments):
+    return {
+        "planned": appointments.filter(status=Appointment.STATUS_PLANNED).count(),
+        "waiting_doctor": appointments.filter(
+            status=Appointment.STATUS_WAITING_DOCTOR
+        ).count(),
+        "emergency": appointments.filter(reason__startswith="[EMERGENCY]").count(),
+    }
+
+
 @login_required
+@role_required("receptionist")
 def appointment_today(request):
     """Display today's schedule with optional patient name search."""
     q = request.GET.get("q", "").strip()
@@ -63,6 +75,7 @@ def appointment_today(request):
 
 
 @login_required
+@role_required("receptionist")
 def appointment_new(request):
     """Create a new appointment with PRG pattern."""
     initial = {}
@@ -100,11 +113,13 @@ def appointment_new(request):
 
 
 @login_required
+@role_required("receptionist")
 def frontdesk_feed(request):
     appointments = _today_queryset().exclude(
         status__in=[Appointment.STATUS_COMPLETED, Appointment.STATUS_CANCELLED]
     )
     doctor_busy = _doctor_busy()
+    queue_counts = _frontdesk_queue_counts(appointments)
     return render(
         request,
         "appointments/frontdesk_feed.html",
@@ -113,17 +128,20 @@ def frontdesk_feed(request):
             "rooms": _rooms_queryset(),
             "intake_form": FrontdeskIntakeForm(),
             "doctor_busy": doctor_busy,
+            "queue_counts": queue_counts,
         },
     )
 
 
 @login_required
 @require_POST
+@role_required("receptionist")
 def frontdesk_intake(request):
     appointments = _today_queryset().exclude(
         status__in=[Appointment.STATUS_COMPLETED, Appointment.STATUS_CANCELLED]
     )
     doctor_busy = _doctor_busy()
+    queue_counts = _frontdesk_queue_counts(appointments)
     intake_form = FrontdeskIntakeForm(request.POST)
     if not intake_form.is_valid():
         messages.error(request, "Please fix the intake form and try again.")
@@ -135,6 +153,7 @@ def frontdesk_intake(request):
                 "rooms": _rooms_queryset(),
                 "intake_form": intake_form,
                 "doctor_busy": doctor_busy,
+                "queue_counts": queue_counts,
             },
         )
 
@@ -210,17 +229,20 @@ def frontdesk_intake(request):
 
 
 @login_required
+@role_required("doctor")
 def doctor_feed(request):
     base = _today_queryset()
     waiting_doctor = base.filter(status=Appointment.STATUS_WAITING_DOCTOR)
     with_doctor = base.filter(status=Appointment.STATUS_WITH_DOCTOR)
     doctor_busy = with_doctor.exists()
+    active_patient = with_doctor.first()
     return render(
         request,
         "appointments/doctor_feed.html",
         {
             "waiting_doctor": waiting_doctor,
             "with_doctor": with_doctor,
+            "active_patient": active_patient,
             "rooms": _rooms_queryset(),
             "doctor_busy": doctor_busy,
         },
@@ -228,6 +250,7 @@ def doctor_feed(request):
 
 
 @login_required
+@role_required("nurse")
 def room_feed(request, room_code):
     room = get_object_or_404(CareRoom, code=room_code, is_active=True)
     base = _today_queryset()
@@ -246,14 +269,21 @@ def room_feed(request, room_code):
             "room": room,
             "waiting_room": waiting_room,
             "in_room": in_room,
+            "queue_count": waiting_room.count(),
+            "active_count": in_room.count(),
             "rooms": _rooms_queryset(),
             "other_rooms": _rooms_queryset().exclude(pk=room.pk),
         },
     )
 
 
-def _transition_and_redirect(request, pk, action, fallback_url_name):
-    next_url = request.POST.get("next") or reverse(fallback_url_name)
+def _transition_and_redirect(request, pk, action, fallback_url_name=None):
+    next_url = request.POST.get("next")
+    if not next_url:
+        if fallback_url_name:
+            next_url = reverse(fallback_url_name)
+        else:
+            next_url = role_home_url(request.user)
     room_id = request.POST.get("room_id") or None
 
     try:
@@ -279,6 +309,7 @@ def _transition_and_redirect(request, pk, action, fallback_url_name):
 
 @login_required
 @require_POST
+@role_required("receptionist")
 def appointment_check_in(request, pk):
     return _transition_and_redirect(
         request, pk, "check_in", "appointments:frontdesk_feed"
@@ -287,6 +318,7 @@ def appointment_check_in(request, pk):
 
 @login_required
 @require_POST
+@role_required("doctor")
 def appointment_doctor_accept(request, pk):
     return _transition_and_redirect(
         request,
@@ -298,6 +330,7 @@ def appointment_doctor_accept(request, pk):
 
 @login_required
 @require_POST
+@role_required("doctor")
 def appointment_transfer_to_room(request, pk):
     return _transition_and_redirect(
         request,
@@ -309,6 +342,7 @@ def appointment_transfer_to_room(request, pk):
 
 @login_required
 @require_POST
+@role_required("nurse")
 def appointment_room_accept(request, pk):
     return _transition_and_redirect(
         request,
@@ -320,6 +354,7 @@ def appointment_room_accept(request, pk):
 
 @login_required
 @require_POST
+@role_required("nurse")
 def appointment_room_transfer(request, pk):
     return _transition_and_redirect(
         request,
@@ -331,6 +366,7 @@ def appointment_room_transfer(request, pk):
 
 @login_required
 @require_POST
+@role_required("nurse")
 def appointment_complete(request, pk):
     return _transition_and_redirect(
         request, pk, "complete", "appointments:frontdesk_feed"
@@ -338,6 +374,7 @@ def appointment_complete(request, pk):
 
 
 @login_required
+@role_required("admin")
 def api_today_appointments(request):
     appointments = _today_queryset()
 

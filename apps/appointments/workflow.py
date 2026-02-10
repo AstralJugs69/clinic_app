@@ -120,7 +120,14 @@ def _doctor_is_busy(*, exclude_appointment_id=None):
     return busy_qs.exists()
 
 
-def transition_appointment(*, appointment_id, action, user, room_id=None):
+def transition_appointment(
+    *,
+    appointment_id,
+    action,
+    user,
+    room_id=None,
+    enforce_doctor_capacity=True,
+):
     if action not in ACTION_RULES:
         raise ValidationError("Unknown workflow action.")
 
@@ -134,8 +141,10 @@ def transition_appointment(*, appointment_id, action, user, room_id=None):
             .get(pk=appointment_id)
         )
 
-        if action in {"check_in", "doctor_accept"} and _doctor_is_busy(
-            exclude_appointment_id=appointment.id
+        if (
+            enforce_doctor_capacity
+            and action in {"check_in", "doctor_accept"}
+            and _doctor_is_busy(exclude_appointment_id=appointment.id)
         ):
             raise ValidationError(
                 "Doctor is currently with another patient. Please wait until the session is finished."

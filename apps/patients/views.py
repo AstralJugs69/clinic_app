@@ -5,9 +5,11 @@ from django.http import JsonResponse
 from .models import Patient
 from .forms import PatientForm
 from apps.accounts.utils import log_action
+from apps.accounts.permissions import role_required
 
 
 @login_required
+@role_required("receptionist")
 def patient_list(request):
     """List patients with optional search by name or phone."""
     q = request.GET.get("q", "").strip()
@@ -27,6 +29,7 @@ def patient_list(request):
 
 
 @login_required
+@role_required("receptionist")
 def patient_new(request):
     """Create a new patient with PRG pattern."""
     if request.method == "POST":
@@ -49,6 +52,7 @@ def patient_new(request):
 
 
 @login_required
+@role_required("receptionist")
 def patient_detail(request, pk):
     """Display patient details."""
     patient = get_object_or_404(Patient, pk=pk)
@@ -56,6 +60,7 @@ def patient_detail(request, pk):
 
 
 @login_required
+@role_required("receptionist")
 def api_patient_list(request):
     q = request.GET.get("q", "").strip()
     patients = Patient.objects.all().order_by("-created_at")
@@ -81,6 +86,7 @@ def api_patient_list(request):
 
 
 @login_required
+@role_required("receptionist")
 def api_patient_detail(request, pk):
     patient = get_object_or_404(Patient, pk=pk)
     payload = {

@@ -4,7 +4,6 @@ URL configuration for config project.
 
 from django.contrib import admin
 from django.urls import include, path
-from django.views.generic import RedirectView
 from apps.accounts.views import StaffLoginView, logout_view
 from apps.patients import views as patient_views
 from apps.appointments import views as appointment_views
@@ -14,7 +13,7 @@ urlpatterns = [
     path("admin/", admin.site.urls),
     path("login/", StaffLoginView.as_view(), name="login"),
     path("logout/", logout_view, name="logout"),
-    path("", RedirectView.as_view(url="/patients/", permanent=False)),
+    path("", account_views.home_redirect, name="home"),
     path("patients/", include("apps.patients.urls")),
     path("appointments/", include("apps.appointments.urls")),
     path("activity/", account_views.activity, name="activity"),
