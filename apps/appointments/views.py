@@ -27,6 +27,14 @@ def _rooms_queryset():
     return CareRoom.objects.filter(is_active=True).order_by("sort_order", "name")
 
 
+def _doctor_busy():
+    today = timezone.localdate()
+    return Appointment.objects.filter(
+        scheduled_at__date=today,
+        status=Appointment.STATUS_WITH_DOCTOR,
+    ).exists()
+
+
 def _validation_error_text(error):
     if hasattr(error, "messages"):
         return " ".join(error.messages)
@@ -96,6 +104,7 @@ def frontdesk_feed(request):
     appointments = _today_queryset().exclude(
         status__in=[Appointment.STATUS_COMPLETED, Appointment.STATUS_CANCELLED]
     )
+    doctor_busy = _doctor_busy()
     return render(
         request,
         "appointments/frontdesk_feed.html",
@@ -103,6 +112,7 @@ def frontdesk_feed(request):
             "appointments": appointments,
             "rooms": _rooms_queryset(),
             "intake_form": FrontdeskIntakeForm(),
+            "doctor_busy": doctor_busy,
         },
     )
 
@@ -113,6 +123,7 @@ def frontdesk_intake(request):
     appointments = _today_queryset().exclude(
         status__in=[Appointment.STATUS_COMPLETED, Appointment.STATUS_CANCELLED]
     )
+    doctor_busy = _doctor_busy()
     intake_form = FrontdeskIntakeForm(request.POST)
     if not intake_form.is_valid():
         messages.error(request, "Please fix the intake form and try again.")
@@ -123,6 +134,7 @@ def frontdesk_intake(request):
                 "appointments": appointments,
                 "rooms": _rooms_queryset(),
                 "intake_form": intake_form,
+                "doctor_busy": doctor_busy,
             },
         )
 
@@ -142,6 +154,31 @@ def frontdesk_intake(request):
         reason=reason,
         status=Appointment.STATUS_PLANNED,
     )
+    broadcast_workflow_event(
+        appointment=appointment,
+        action="created_appointment",
+        actor=request.user.username,
+    )
+
+    if doctor_busy:
+        log_action(
+            request,
+            action="created_appointment",
+            target_type="appointment",
+            target_id=appointment.id,
+            description=(
+                f"Created front desk intake (waiting doctor availability): "
+                f"{appointment.patient.full_name}"
+            ),
+        )
+        messages.warning(
+            request,
+            (
+                f"{appointment.patient.full_name} added to waiting list. "
+                "Doctor is currently in session, so check-in is temporarily disabled."
+            ),
+        )
+        return redirect("appointments:frontdesk_feed")
 
     try:
         checked_in_appointment, _event = transition_appointment(
@@ -177,6 +214,7 @@ def doctor_feed(request):
     base = _today_queryset()
     waiting_doctor = base.filter(status=Appointment.STATUS_WAITING_DOCTOR)
     with_doctor = base.filter(status=Appointment.STATUS_WITH_DOCTOR)
+    doctor_busy = with_doctor.exists()
     return render(
         request,
         "appointments/doctor_feed.html",
@@ -184,6 +222,7 @@ def doctor_feed(request):
             "waiting_doctor": waiting_doctor,
             "with_doctor": with_doctor,
             "rooms": _rooms_queryset(),
+            "doctor_busy": doctor_busy,
         },
     )
 

@@ -30,10 +30,13 @@ def broadcast_workflow_event(*, appointment, action, actor):
         "timestamp": timezone.now().isoformat(),
     }
 
-    async_to_sync(channel_layer.group_send)(
-        WORKFLOW_GROUP,
-        {
-            "type": "workflow_event",
-            "payload": payload,
-        },
-    )
+    try:
+        async_to_sync(channel_layer.group_send)(
+            WORKFLOW_GROUP,
+            {
+                "type": "workflow_event",
+                "payload": payload,
+            },
+        )
+    except Exception:
+        return

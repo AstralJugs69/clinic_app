@@ -1,5 +1,6 @@
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import transaction
+from django.utils import timezone
 
 from apps.accounts.models import UserProfile
 from apps.accounts.utils import log_action
@@ -108,6 +109,17 @@ def _action_description(action, appointment, room):
     return f"Updated appointment for patient: {patient_name}"
 
 
+def _doctor_is_busy(*, exclude_appointment_id=None):
+    today = timezone.localdate()
+    busy_qs = Appointment.objects.filter(
+        status=Appointment.STATUS_WITH_DOCTOR,
+        scheduled_at__date=today,
+    )
+    if exclude_appointment_id:
+        busy_qs = busy_qs.exclude(pk=exclude_appointment_id)
+    return busy_qs.exists()
+
+
 def transition_appointment(*, appointment_id, action, user, room_id=None):
     if action not in ACTION_RULES:
         raise ValidationError("Unknown workflow action.")
@@ -121,6 +133,13 @@ def transition_appointment(*, appointment_id, action, user, room_id=None):
             .select_related("patient")
             .get(pk=appointment_id)
         )
+
+        if action in {"check_in", "doctor_accept"} and _doctor_is_busy(
+            exclude_appointment_id=appointment.id
+        ):
+            raise ValidationError(
+                "Doctor is currently with another patient. Please wait until the session is finished."
+            )
 
         if appointment.status not in rule["from"]:
             raise ValidationError(

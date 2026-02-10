@@ -6,6 +6,9 @@
     <div>
       <h1 class="text-2xl font-semibold">Front Desk Live Board</h1>
       <p class="text-sm text-gray-500">Real-time check-in and queue handoff.</p>
+      {% if doctor_busy %}
+      <p class="text-xs text-amber-700 mt-1">Doctor is in session. New check-ins are paused until current treatment is finished.</p>
+      {% endif %}
     </div>
     <div class="flex gap-2 flex-wrap">
       <a href="{% url 'appointments:today' %}" class="px-3 py-2 border rounded hover:bg-gray-50 text-sm">Schedule</a>
@@ -92,7 +95,7 @@
       </thead>
       <tbody id="frontdesk-body">
         {% for item in appointments %}
-        <tr class="border-t hover:bg-gray-50 {% if item.reason and '[EMERGENCY]' in item.reason %}bg-red-50{% endif %}" data-appointment-id="{{ item.id }}">
+        <tr class="border-t hover:bg-gray-50 {% if item.reason and '[EMERGENCY]' in item.reason %}bg-red-50{% endif %}" data-appointment-id="{{ item.id }}" data-status-code="{{ item.status }}">
           <td class="px-4 py-2" data-field="time">{{ item.scheduled_at|date:"H:i" }}</td>
           <td class="px-4 py-2 font-medium" data-field="patient">
             {{ item.patient.full_name }}
@@ -103,7 +106,7 @@
           <td class="px-4 py-2" data-field="status">{{ item.get_status_display }}</td>
           <td class="px-4 py-2" data-field="room">{{ item.assigned_room.name|default:"-" }}</td>
           <td class="px-4 py-2 text-right" data-field="action">
-            {% if item.status == 'PL' %}
+            {% if item.status == 'PL' and not doctor_busy %}
             <form method="post" action="{% url 'appointments:check_in' item.id %}" class="inline">
               {% csrf_token %}
               <input type="hidden" name="next" value="{{ request.get_full_path }}" />
@@ -111,6 +114,10 @@
                 Check In
               </button>
             </form>
+            {% elif item.status == 'PL' and doctor_busy %}
+            <button type="button" disabled class="bg-gray-200 text-gray-500 px-3 py-1.5 rounded cursor-not-allowed">
+              Check In
+            </button>
             {% else %}
             <span class="text-gray-400">-</span>
             {% endif %}
@@ -131,6 +138,7 @@
     const emptyRow = document.getElementById("frontdesk-empty");
     const activeStatuses = new Set(["PL", "WD", "MD", "WR", "MR"]);
     const currentPath = window.location.pathname + window.location.search;
+    let doctorBusy = {{ doctor_busy|yesno:"true,false" }};
 
     if (!body || !emptyRow) {
       return;
@@ -155,14 +163,18 @@
       emptyRow.classList.toggle("hidden", hasRows);
     }
 
-    function actionHtml(payload) {
-      if (payload.status !== "PL") {
+    function actionHtml(appointmentId, statusCode) {
+      if (statusCode !== "PL") {
         return '<span class="text-gray-400">-</span>';
+      }
+
+      if (doctorBusy) {
+        return '<button type="button" disabled class="bg-gray-200 text-gray-500 px-3 py-1.5 rounded cursor-not-allowed">Check In</button>';
       }
 
       const csrfToken = escapeHtml(getCsrfToken());
       return [
-        `<form method="post" action="/appointments/${payload.appointment_id}/check-in/" class="inline">`,
+        `<form method="post" action="/appointments/${appointmentId}/check-in/" class="inline">`,
         `<input type="hidden" name="csrfmiddlewaretoken" value="${csrfToken}">`,
         `<input type="hidden" name="next" value="${escapeHtml(currentPath)}">`,
         '<button type="submit" class="bg-emerald-600 text-white px-3 py-1.5 rounded hover:bg-emerald-700">Check In</button>',
@@ -187,6 +199,7 @@
         row = document.createElement("tr");
         row.className = "border-t hover:bg-gray-50";
         row.dataset.appointmentId = payload.appointment_id;
+        row.dataset.statusCode = payload.status || "PL";
         row.innerHTML = [
           '<td class="px-4 py-2" data-field="time"></td>',
           '<td class="px-4 py-2 font-medium" data-field="patient"></td>',
@@ -199,6 +212,23 @@
       return row;
     }
 
+    function recalculateDoctorBusy() {
+      doctorBusy = body.querySelector('tr[data-status-code="MD"]') !== null;
+    }
+
+    function refreshPlannedActions() {
+      const rows = body.querySelectorAll("tr[data-appointment-id]");
+      rows.forEach(function (row) {
+        const statusCode = row.dataset.statusCode || "";
+        const appointmentId = row.dataset.appointmentId;
+        const actionCell = row.querySelector('[data-field="action"]');
+        if (!actionCell || !appointmentId) {
+          return;
+        }
+        actionCell.innerHTML = actionHtml(appointmentId, statusCode);
+      });
+    }
+
     window.clinicFlowHandleEvent = function (payload) {
       if (!payload || !payload.appointment_id) {
         return;
@@ -209,6 +239,8 @@
         if (existingRow) {
           existingRow.remove();
         }
+        recalculateDoctorBusy();
+        refreshPlannedActions();
         toggleEmptyState();
         return;
       }
@@ -218,13 +250,19 @@
       row.className = isEmergency(payload)
         ? "border-t hover:bg-gray-50 bg-red-50"
         : "border-t hover:bg-gray-50";
+      row.dataset.statusCode = payload.status || "";
       row.querySelector('[data-field="patient"]').innerHTML = patientHtml(payload);
       row.querySelector('[data-field="status"]').textContent = payload.status_label || payload.status;
       row.querySelector('[data-field="room"]').textContent = payload.room_name || "-";
-      row.querySelector('[data-field="action"]').innerHTML = actionHtml(payload);
+
+      recalculateDoctorBusy();
+      refreshPlannedActions();
 
       toggleEmptyState();
     };
+
+    recalculateDoctorBusy();
+    refreshPlannedActions();
   })();
 </script>
 

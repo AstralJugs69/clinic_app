@@ -64,6 +64,74 @@ class WorkflowTests(TestCase):
                 user=self.receptionist,
             )
 
+    def test_only_one_patient_can_be_with_doctor(self):
+        second_patient = Patient.objects.create(
+            full_name="Second Patient",
+            phone="+251933444555",
+            sex="F",
+        )
+        second_appointment = Appointment.objects.create(
+            patient=second_patient,
+            scheduled_at=timezone.now() + timedelta(hours=2),
+            duration_minutes=15,
+            status=Appointment.STATUS_PLANNED,
+        )
+
+        transition_appointment(
+            appointment_id=self.appointment.id,
+            action="check_in",
+            user=self.receptionist,
+        )
+        transition_appointment(
+            appointment_id=self.appointment.id,
+            action="doctor_accept",
+            user=self.doctor,
+        )
+
+        with self.assertRaises(ValidationError):
+            transition_appointment(
+                appointment_id=second_appointment.id,
+                action="check_in",
+                user=self.receptionist,
+            )
+
+        second_appointment.refresh_from_db()
+        self.assertEqual(second_appointment.status, Appointment.STATUS_PLANNED)
+
+    def test_cannot_accept_second_waiting_patient_while_busy(self):
+        second_patient = Patient.objects.create(
+            full_name="Third Patient",
+            phone="+251944555666",
+            sex="M",
+        )
+        second_appointment = Appointment.objects.create(
+            patient=second_patient,
+            scheduled_at=timezone.now() + timedelta(hours=2),
+            duration_minutes=15,
+            status=Appointment.STATUS_WAITING_DOCTOR,
+        )
+
+        transition_appointment(
+            appointment_id=self.appointment.id,
+            action="check_in",
+            user=self.receptionist,
+        )
+        transition_appointment(
+            appointment_id=self.appointment.id,
+            action="doctor_accept",
+            user=self.doctor,
+        )
+
+        with self.assertRaises(ValidationError):
+            transition_appointment(
+                appointment_id=second_appointment.id,
+                action="doctor_accept",
+                user=self.doctor,
+            )
+
+        second_appointment.refresh_from_db()
+        self.assertEqual(second_appointment.status, Appointment.STATUS_WAITING_DOCTOR)
+
     def test_full_doctor_and_room_flow(self):
         transition_appointment(
             appointment_id=self.appointment.id,

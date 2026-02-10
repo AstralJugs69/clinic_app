@@ -88,11 +88,32 @@ python manage.py createsuperuser
 python manage.py seed_demo
 ```
 
+Comprehensive dataset from a clean database:
+
+```bash
+python manage.py seed_demo --reset --patients 180 --appointments 500
+```
+
+For local-only reset/seed (without touching hosted DB):
+
+```bash
+DB_TARGET=local python manage.py seed_demo --reset --patients 180 --appointments 500
+```
+
+Useful options:
+
+- `--reset` clears existing records before seeding
+- `--patients <count>` controls patient volume
+- `--appointments <count>` controls appointment volume
+- `--seed <number>` makes generated data deterministic
+
 Demo credentials created by the command:
 
 - `demo_staff` (receptionist)
 - `demo_doctor` (doctor)
+- `demo_doctor2` (doctor)
 - `demo_nurse` (nurse)
+- `demo_nurse2` (nurse)
 - Password for all: `DemoPass123!`
 
 ### 6. Run Development Server
